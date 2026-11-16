@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================
+// ENUMS
+// ========================
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  INFOGRAPHIC
+}
+
+// ========================
+// USER
+// ========================
+
+model User {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(100)
+  email     String   @unique @db.VarChar(150)
+  password  String   @db.VarChar(255)
+  role      Role     @default(USER)
+  avatar    String?  @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  articles      Article[]
+  quizAttempts  QuizAttempt[]
+  forumPosts    ForumPost[]
+  forumReplies  ForumReply[]
+
+  @@index([email])
+}
+
+// ========================
+// ARTICLE & MEDIA
+// ========================
+
+model Article {
+  id          String   @id @default(cuid())
+  title       String   @db.VarChar(200)
+  slug        String   @unique @db.VarChar(220)
+  excerpt     String?  @db.Text
+  content     String   @db.LongText
+  coverImage  String?  @db.VarChar(255)
+  published   Boolean  @default(false)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  media       Media[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([published])
+}
+
+model Media {
+  id        String    @id @default(cuid())
+  type      MediaType
+  title     String    @db.VarChar(200)
+  url       String    @db.VarChar(500)
+  articleId String?
+  article   Article?  @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  createdAt DateTime  @default(now())
+
+  @@index([articleId])
+}
+
+// ========================
+// QUIZ
+// ========================
+
+model Quiz {
+  id          String        @id @default(cuid())
+  title       String        @db.VarChar(200)
+  description String?       @db.Text
+  published   Boolean       @default(false)
+  creatorId   String
+  questions   Question[]
+  attempts    QuizAttempt[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([published])
+}
+
+model Question {
+  id           String         @id @default(cuid())
+  quizId       String
+  quiz         Quiz           @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  questionText String         @db.Text
+  order        Int            @default(0)
+  points       Int            @default(1)
+  options      AnswerOption[]
+  userAnswers  UserAnswer[]
+  createdAt    DateTime       @default(now())
+
+  @@index([quizId])
+}
+
+model AnswerOption {
+  id          String       @id @default(cuid())
+  questionId  String
+  question    Question     @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  optionText  String       @db.Text
+  isCorrect   Boolean      @default(false)
+  order       Int          @default(0)
+  userAnswers UserAnswer[]
+
+  @@index([questionId])
+}
+
+model QuizAttempt {
+  id          String       @id @default(cuid())
+  quizId      String
+  quiz        Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score       Int          @default(0)
+  totalPoints Int          @default(0)
+  startedAt   DateTime     @default(now())
+  completedAt DateTime?
+  userAnswers UserAnswer[]
+
+  @@index([quizId])
+  @@index([userId])
+}
+
+model UserAnswer {
+  id             String       @id @default(cuid())
+  attemptId      String
+  attempt        QuizAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       Question     @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answerOptionId String
+  answerOption   AnswerOption @relation(fields: [answerOptionId], references: [id], onDelete: Cascade)
+  isCorrect      Boolean      @default(false)
+  answeredAt     DateTime     @default(now())
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+}
+
+// ========================
+// FORUM
+// ========================
+
+model Forum {
+  id          String      @id @default(cuid())
+  title       String      @db.VarChar(200)
+  slug        String      @unique @db.VarChar(220)
+  description String?     @db.Text
+  posts       ForumPost[]
+  createdAt   DateTime    @default(now())
+}
+
+model ForumPost {
+  id        String       @id @default(cuid())
+  forumId   String
+  forum     Forum        @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content   String       @db.Text
+  replies   ForumReply[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([forumId])
+  @@index([authorId])
+}
+
+model ForumReply {
+  id        String    @id @default(cuid())
+  postId    String
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content   String    @db.Text
+  createdAt DateTime  @default(now())
+
+  @@index([postId])
+}
