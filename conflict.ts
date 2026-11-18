@@ -1,3 +1,1 @@
-function conflict(){
-    console.log('hello hafis')
-}
+//conflik
