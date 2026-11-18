@@ -1,3 +1,3 @@
 function conflict(){
-    console.log('hello deco')
+    console.log('hello hafis')
 }
